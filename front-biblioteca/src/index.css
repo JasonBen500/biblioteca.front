@@ -1,1 +1,57 @@
 @import "tailwindcss";
+
+@theme {
+  /* Fondos y Superficies */
+  --color-bg-main: #f4f6f8;       /* Gris claro neutro moderno */
+  --color-bg-surface: #ffffff;    /* Blanco puro para tarjetas/contenedores */
+
+  /* Tipografía y Bordes */
+  --color-text-main: #1e293b;     /* Azul negruzco de alta legibilidad */
+  --color-text-muted: #64748b;    /* Gris pizarra para subtítulos */
+  --color-border-light: #e2e8f0;  /* Gris suave para líneas divisorias */
+
+  /* Acciones y Estados (Moderos y Vintage) */
+  --color-accent-modern: #2563eb; /* Azul institucional para botones principales */
+  --color-accent-vintage: #c68a4c;/* Ocre/Mostaza Vintage para elementos destacados secundarios */
+  --color-alert: #d97706;         /* Ámbar para notificaciones o alertas */
+  --color-papel: #fbf7ee;         /* Papel crema para fichas y formularios */
+}
+
+/* Formularios con aspecto de ficha de biblioteca (dentro de un contenedor .ficha) */
+.ficha label.block {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-accent-vintage);
+}
+
+.ficha input:not([type="checkbox"]):not([type="radio"]),
+.ficha select,
+.ficha textarea {
+  border: 0;
+  border-bottom: 2px solid color-mix(in srgb, var(--color-text-main) 30%, transparent);
+  border-radius: 0.375rem 0.375rem 0 0;
+  background-color: color-mix(in srgb, var(--color-accent-vintage) 8%, transparent);
+  box-shadow: none;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+
+.ficha input:not([type="checkbox"]):not([type="radio"]):focus,
+.ficha select:focus,
+.ficha textarea:focus {
+  outline: none;
+  box-shadow: none;
+  border-bottom-color: var(--color-accent-vintage);
+  background-color: color-mix(in srgb, var(--color-accent-vintage) 16%, transparent);
+}
+
+.ficha input::placeholder,
+.ficha textarea::placeholder {
+  font-style: italic;
+}
+
+.ficha input[type="checkbox"],
+.ficha input[type="radio"] {
+  accent-color: var(--color-accent-vintage);
+}

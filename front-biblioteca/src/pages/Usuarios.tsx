@@ -1,106 +1,356 @@
-import { useEffect, useState } from "react";
-import type { FormEvent } from "react";
-import type { Usuario } from "../types/Usuario";
-import type { Perfil } from "../types/Perfil";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import axios from "axios";
+import { Plus, UserRound } from "lucide-react";
 import {
-  getUsuarios,
-  crearUsuario,
-  modificarUsuario,
-  eliminarUsuario,
   anularUsuario,
+  crearUsuario,
+  getUsuarios,
+  modificarUsuario,
 } from "../services/usuariosService";
 import { getPerfiles } from "../services/perfilesservices";
-import Layout from "../components/Layout";
+import Modal from "../components/Modal";
+import BarraBusqueda from "../components/BarraBusqueda";
+import Mensaje from "../components/Mensaje";
+import TablaDatos, { type ColumnaTabla } from "../components/TablaDatos";
+import AccionesFila from "../components/AccionesFilas";
+import { filtrarPorTexto } from "../utils/busqueda";
+import { filtrarPorEstado, type FiltroEstado } from "../utils/estados";
+import type { Usuario } from "../types/Usuario";
+import type { Perfil } from "../types/Perfil";
 
-const vacio: Usuario = { idUsuario: 0, idPerfil: 0, nombre: "", usuario: "", contrasena: "", correo: "", estado: true };
+const USUARIO_VACIO: Usuario = {
+  idUsuario: 0,
+  idPerfil: 0,
+  nombre: "",
+  usuario: "",
+  contrasena: "",
+  correo: "",
+  estado: true,
+};
 
-export default function Usuarios() {
-  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
-  const [perfiles, setPerfiles] = useState<Perfil[]>([]);
-  const [form, setForm] = useState<Usuario>(vacio);
-  const [editando, setEditando] = useState(false);
+const ESTILO_INPUT =
+  "w-full rounded-xl border border-border-light bg-bg-surface px-4 py-2 font-marmelad text-sm font-semibold text-text-main placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent-modern";
+const ESTILO_LABEL = "mb-1 block font-marmelad text-sm font-extrabold text-text-main";
 
-  const cargar = async () => setUsuarios((await getUsuarios()).data);
+const mensajeDeError = (err: unknown, porDefecto: string) => {
+  if (axios.isAxiosError(err)) {
+    const data = err.response?.data as { message?: string } | undefined;
+    return data?.message ?? porDefecto;
+  }
+  return porDefecto;
+};
 
-  useEffect(() => {
-    cargar();
-    getPerfiles().then((res) => setPerfiles(res.data));
-  }, []);
+interface PropsFormulario {
+  inicial: Usuario;
+  perfiles: Perfil[];
+  onCerrar: () => void;
+  onGuardado: (mensaje: string) => void;
+}
+
+function FormularioUsuario({ inicial, perfiles, onCerrar, onGuardado }: PropsFormulario) {
+  const [form, setForm] = useState<Usuario>(inicial);
+  const [error, setError] = useState("");
+  const [guardando, setGuardando] = useState(false);
+  const editando = inicial.idUsuario !== 0;
+
+  // Perfiles activos, más el que ya tiene el usuario
+  const perfilesOpciones = perfiles.filter(
+    (p) => p.estado || p.idPerfil === inicial.idPerfil,
+  );
 
   const manejarSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (editando) await modificarUsuario(form.idUsuario, form);
-    else await crearUsuario(form);
-    setForm(vacio);
-    setEditando(false);
-    cargar();
+    setError("");
+
+    if (form.nombre.trim() === "") {
+      setError("Error: el nombre es obligatorio.");
+      return;
+    }
+    if (form.usuario.trim() === "") {
+      setError("Error: el usuario es obligatorio.");
+      return;
+    }
+    if (form.contrasena === "") {
+      setError("Error: la contraseña es obligatoria.");
+      return;
+    }
+    if (form.idPerfil === 0) {
+      setError("Error: selecciona un perfil.");
+      return;
+    }
+
+    setGuardando(true);
+    try {
+      const datos = {
+        ...form,
+        nombre: form.nombre.trim(),
+        usuario: form.usuario.trim(),
+        correo: form.correo.trim(),
+      };
+      if (editando) await modificarUsuario(datos.idUsuario, datos);
+      else await crearUsuario(datos);
+      onGuardado(
+        editando ? "Usuario modificado correctamente" : "Usuario creado correctamente",
+      );
+      onCerrar();
+    } catch (err) {
+      setError(mensajeDeError(err, "Error: no se pudo guardar el usuario."));
+    } finally {
+      setGuardando(false);
+    }
   };
 
   return (
-    <Layout>
-      <h1 className="text-2xl font-bold mb-4">Usuarios</h1>
+    <form onSubmit={manejarSubmit} className="flex flex-col gap-4">
+      <Mensaje texto={error} />
 
-      <form onSubmit={manejarSubmit} className="bg-white p-4 rounded shadow mb-6 grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-sm mb-1">Nombre</label>
-          <input type="text" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} className="border rounded px-3 py-2 w-full" required />
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="sm:col-span-2">
+          <label className={ESTILO_LABEL}>Nombre *</label>
+          <input
+            className={ESTILO_INPUT}
+            value={form.nombre}
+            onChange={(e) => setForm({ ...form, nombre: e.target.value })}
+            placeholder="Nombre completo"
+          />
         </div>
         <div>
-          <label className="block text-sm mb-1">Usuario</label>
-          <input type="text" value={form.usuario} onChange={(e) => setForm({ ...form, usuario: e.target.value })} className="border rounded px-3 py-2 w-full" required />
+          <label className={ESTILO_LABEL}>Usuario *</label>
+          <input
+            className={ESTILO_INPUT}
+            value={form.usuario}
+            onChange={(e) => setForm({ ...form, usuario: e.target.value })}
+            placeholder="Nombre de usuario"
+          />
         </div>
         <div>
-          <label className="block text-sm mb-1">Contraseña</label>
-          <input type="password" value={form.contrasena} onChange={(e) => setForm({ ...form, contrasena: e.target.value })} className="border rounded px-3 py-2 w-full" required />
+          <label className={ESTILO_LABEL}>Contraseña *</label>
+          <input
+            type="password"
+            className={ESTILO_INPUT}
+            value={form.contrasena}
+            onChange={(e) => setForm({ ...form, contrasena: e.target.value })}
+            placeholder="Contraseña"
+          />
         </div>
         <div>
-          <label className="block text-sm mb-1">Correo</label>
-          <input type="email" value={form.correo} onChange={(e) => setForm({ ...form, correo: e.target.value })} className="border rounded px-3 py-2 w-full" />
+          <label className={ESTILO_LABEL}>Correo</label>
+          <input
+            type="email"
+            className={ESTILO_INPUT}
+            value={form.correo}
+            onChange={(e) => setForm({ ...form, correo: e.target.value })}
+            placeholder="correo@ejemplo.com"
+          />
         </div>
         <div>
-          <label className="block text-sm mb-1">Perfil</label>
-          <select value={form.idPerfil} onChange={(e) => setForm({ ...form, idPerfil: Number(e.target.value) })} className="border rounded px-3 py-2 w-full" required>
+          <label className={ESTILO_LABEL}>Perfil *</label>
+          <select
+            className={ESTILO_INPUT}
+            value={form.idPerfil}
+            onChange={(e) => setForm({ ...form, idPerfil: Number(e.target.value) })}
+          >
             <option value={0}>Seleccione...</option>
-            {perfiles.map((p) => (
-              <option key={p.idPerfil} value={p.idPerfil}>{p.nombre}</option>
+            {perfilesOpciones.map((p) => (
+              <option key={p.idPerfil} value={p.idPerfil}>
+                {p.nombre}
+              </option>
             ))}
           </select>
         </div>
-        <div className="col-span-2">
-          <button type="submit" className="bg-slate-800 text-white px-4 py-2 rounded">
-            {editando ? "Actualizar" : "Agregar"}
-          </button>
-        </div>
-      </form>
+        {editando && (
+          <label className="flex items-center gap-2 font-marmelad text-sm font-extrabold text-text-main sm:col-span-2">
+            <input
+              type="checkbox"
+              checked={form.estado}
+              onChange={(e) => setForm({ ...form, estado: e.target.checked })}
+              className="h-4 w-4 accent-accent-modern"
+            />
+            Usuario activo
+          </label>
+        )}
+      </div>
 
-      <table className="w-full bg-white rounded shadow overflow-hidden">
-        <thead className="bg-slate-800 text-white">
-          <tr>
-            <th className="p-2 text-left">ID</th>
-            <th className="p-2 text-left">Nombre</th>
-            <th className="p-2 text-left">Usuario</th>
-            <th className="p-2 text-left">Correo</th>
-            <th className="p-2 text-left">Estado</th>
-            <th className="p-2 text-left">Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          {usuarios.map((u) => (
-            <tr key={u.idUsuario} className="border-b">
-              <td className="p-2">{u.idUsuario}</td>
-              <td className="p-2">{u.nombre}</td>
-              <td className="p-2">{u.usuario}</td>
-              <td className="p-2">{u.correo}</td>
-              <td className="p-2">{u.estado ? "Activo" : "Inactivo"}</td>
-              <td className="p-2 flex gap-2">
-                <button onClick={() => { setForm(u); setEditando(true); }} className="text-blue-600">Editar</button>
-                <button onClick={() => anularUsuario(u.idUsuario).then(cargar)} className="text-yellow-600">Anular</button>
-                <button onClick={() => eliminarUsuario(u.idUsuario).then(cargar)} className="text-red-600">Eliminar</button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </Layout>
+      <div className="flex justify-end gap-2">
+        <button
+          type="button"
+          onClick={onCerrar}
+          className="rounded-full border border-text-main px-5 py-2 font-marmelad text-sm font-bold text-text-main transition-colors hover:bg-text-main hover:text-white"
+        >
+          Cancelar
+        </button>
+        <button
+          type="submit"
+          disabled={guardando}
+          className="rounded-full bg-accent-modern px-5 py-2 font-marmelad text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+        >
+          {guardando ? "Guardando..." : editando ? "Actualizar usuario" : "Guardar usuario"}
+        </button>
+      </div>
+    </form>
   );
 }
+
+const estiloFiltro = (activo: boolean) =>
+  `rounded-full px-4 py-2 font-marmelad text-xs font-extrabold transition-colors ${activo
+    ? "bg-text-main text-bg-main"
+    : "border border-border-light bg-bg-surface text-text-main hover:bg-bg-main"
+  }`;
+
+function Usuarios() {
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  const [perfiles, setPerfiles] = useState<Perfil[]>([]);
+  const [cargando, setCargando] = useState(true);
+  const [mensaje, setMensaje] = useState("");
+
+  const [busqueda, setBusqueda] = useState("");
+  const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>("activos");
+  const [usuarioEnEdicion, setUsuarioEnEdicion] = useState<Usuario | null>(null);
+
+  const cargar = useCallback(async () => {
+    try {
+      const [resUsuarios, resPerfiles] = await Promise.all([
+        getUsuarios(),
+        getPerfiles(),
+      ]);
+      setUsuarios(resUsuarios.data);
+      setPerfiles(resPerfiles.data);
+    } catch {
+      setMensaje("Error: no se pudieron cargar los datos del servidor.");
+    } finally {
+      setCargando(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void cargar();
+  }, [cargar]);
+
+  const usuariosVisibles = useMemo(() => {
+    const lista = filtrarPorEstado(usuarios, filtroEstado);
+    // La búsqueda no debe mirar la contraseña
+    const ids = new Set(
+      filtrarPorTexto(
+        lista.map((u) => ({ ...u, contrasena: "" })),
+        busqueda,
+      ).map((u) => u.idUsuario),
+    );
+    return lista.filter((u) => ids.has(u.idUsuario));
+  }, [usuarios, filtroEstado, busqueda]);
+
+  const alGuardar = (texto: string) => {
+    setMensaje(texto);
+    void cargar();
+  };
+
+  const anular = async (usuario: Usuario) => {
+    if (!window.confirm(`¿Anular al usuario "${usuario.usuario}"?`)) return;
+    try {
+      await anularUsuario(usuario.idUsuario);
+      setMensaje("Usuario anulado correctamente");
+      void cargar();
+    } catch (err) {
+      setMensaje(mensajeDeError(err, "Error: no se pudo anular el usuario."));
+    }
+  };
+
+  const columnas: ColumnaTabla<Usuario>[] = [
+    { encabezado: "Nombre", valor: (u) => u.nombre },
+    { encabezado: "Usuario", valor: (u) => u.usuario },
+    { encabezado: "Correo", valor: (u) => u.correo || "—" },
+    { encabezado: "Perfil", valor: (u) => u.nombrePerfil ?? "—" },
+    {
+      encabezado: "Estado",
+      valor: (u) => (
+        <span
+          className={`rounded-full px-3 py-1 text-xs font-extrabold ${u.estado
+              ? "bg-accent-modern/10 text-accent-modern"
+              : "bg-text-muted/15 text-text-muted"
+            }`}
+        >
+          {u.estado ? "Activo" : "Inactivo"}
+        </span>
+      ),
+    },
+  ];
+
+  return (
+    <div className="flex flex-col gap-6 p-6 font-marmelad">
+      <header className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-black text-text-main">Usuarios</h1>
+          <p className="text-sm font-semibold text-text-muted">
+            Personal con acceso al sistema
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setUsuarioEnEdicion(USUARIO_VACIO)}
+          className="inline-flex items-center gap-2 rounded-full bg-accent-modern px-6 py-3 text-sm font-bold text-white shadow-sm transition-opacity hover:opacity-90"
+        >
+          <Plus size={18} />
+          Nuevo usuario
+        </button>
+      </header>
+
+      <Mensaje texto={mensaje} />
+
+      <div className="flex flex-wrap items-center gap-3">
+        <BarraBusqueda
+          valor={busqueda}
+          onCambiar={setBusqueda}
+          placeholder="Buscar por nombre, usuario, correo o perfil..."
+        />
+
+        <div className="flex flex-wrap gap-2">
+          {(["activos", "inactivos", "todos"] as FiltroEstado[]).map((f) => (
+            <button
+              key={f}
+              type="button"
+              onClick={() => setFiltroEstado(f)}
+              className={estiloFiltro(filtroEstado === f)}
+            >
+              {f === "activos" ? "Activos" : f === "inactivos" ? "Inactivos" : "Todos"}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {cargando ? (
+        <p className="text-sm font-semibold text-text-muted">Cargando...</p>
+      ) : (
+        <TablaDatos
+          columnas={columnas}
+          datos={usuariosVisibles}
+          claveFila={(u) => u.idUsuario}
+          acciones={(u) => (
+            <AccionesFila
+              onEditar={() => setUsuarioEnEdicion(u)}
+              onAnular={() => anular(u)}
+            />
+          )}
+        />
+      )}
+
+      <Modal
+        abierto={usuarioEnEdicion !== null}
+        titulo={usuarioEnEdicion?.idUsuario ? "Editar usuario" : "Nuevo usuario"}
+        subtitulo="Completa los datos del usuario"
+        icono={UserRound}
+        onCerrar={() => setUsuarioEnEdicion(null)}
+      >
+        {usuarioEnEdicion && (
+          <FormularioUsuario
+            inicial={usuarioEnEdicion}
+            perfiles={perfiles}
+            onCerrar={() => setUsuarioEnEdicion(null)}
+            onGuardado={alGuardar}
+          />
+        )}
+      </Modal>
+    </div>
+  );
+}
+
+export default Usuarios;

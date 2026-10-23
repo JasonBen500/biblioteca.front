@@ -5,4 +5,6 @@ export interface Prestamo {
   fechaPrestamo: string;
   fechaDevolucionEsperada: string;
   estado: boolean;
+  nombreSocio?: string;
+  nombreUsuario?: string;
 }

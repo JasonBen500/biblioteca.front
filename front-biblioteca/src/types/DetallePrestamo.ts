@@ -3,4 +3,8 @@ export interface DetallePrestamo {
   idPrestamo: number;
   idLibro: number;
   fechaDevolucionReal: string;
+  estado: boolean;
+  descripcionPrestamo?: string;
+  nombreSocio?: string;
+  nombreLibro?: string;
 }

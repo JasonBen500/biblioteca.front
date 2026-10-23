@@ -6,4 +6,5 @@ export interface Usuario {
   contrasena: string;
   correo: string;
   estado: boolean;
+  nombrePerfil?: string;
 }
