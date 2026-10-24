@@ -15,6 +15,8 @@ import GraficaLibrosPedidos from "../components/dashboard/GraficaLibrosPedidos";
 import GraficaEjemplares from "../components/dashboard/GraficaEjemplares";
 import { useDetallesPrestamo } from "../hooks/useDetallesPrestamo";
 import { librosMasPedidos } from "../utils/estadisticas";
+import { useAuth } from "../context/AuthContext";
+import { puedeAnular } from "../utils/permisos";
 
 type FiltroStock = "todos" | "con" | "sin";
 
@@ -163,6 +165,7 @@ const estiloFiltro = (activo: boolean) =>
 
 function Libros() {
   const { libros, socios, prestamos, cargando, error, recargar } = useDatosInicio();
+  const { rol } = useAuth();
   const detalles = useDetallesPrestamo();
 
   const masPedidos = useMemo(
@@ -304,7 +307,7 @@ function Libros() {
               libro={libro}
               onPrestar={prestar}
               onEditar={setLibroEnEdicion}
-              onAnular={anular}
+              onAnular={puedeAnular(rol) ? anular : undefined}
             />
           ))}
         </div>

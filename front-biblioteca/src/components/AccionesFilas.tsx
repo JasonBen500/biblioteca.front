@@ -3,7 +3,7 @@ import { Pencil, Ban, Trash2, Eye, Printer } from "lucide-react";
 interface Props {
   onVerDetalles?: () => void;
   onEditar: () => void;
-  onAnular: () => void;
+  onAnular?: () => void;
   onEliminar?: () => void;
   onImprimir?: () => void;
 }
@@ -47,15 +47,17 @@ function AccionesFila({ onVerDetalles, onImprimir, onEditar, onAnular, onElimina
         <Pencil size={18} />
       </button>
 
-      <button
-        type="button"
-        onClick={onAnular}
-        title="Anular"
-        aria-label="Anular"
-        className={`${base} text-alert hover:bg-alert/15`}
-      >
-        <Ban size={18} />
-      </button>
+      {onAnular && (
+        <button
+          type="button"
+          onClick={onAnular}
+          title="Anular"
+          aria-label="Anular"
+          className={`${base} text-alert hover:bg-alert/15`}
+        >
+          <Ban size={18} />
+        </button>
+      )}
 
       {onEliminar && (
         <button

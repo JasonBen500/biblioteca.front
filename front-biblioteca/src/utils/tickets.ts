@@ -29,7 +29,7 @@ export const ticketPrestamo = (prestamo: Prestamo, detalles: DetallePrestamo[]) 
 
     const cuerpo = `
     <div class="ticket">
-      <h2 class="centro">BIBLIOTECA</h2>
+      <h2 class="centro">BIBLIOTECH</h2>
       <div class="centro muted">Ticket de préstamo</div>
       <div class="linea"></div>
       <div><b>N° préstamo:</b> #${esc(String(prestamo.idPrestamo))}</div>

@@ -19,6 +19,8 @@ import { formatearFecha, soloFecha } from "../utils/fechas";
 import type { Prestamo } from "../types/Prestamo";
 import type { Socio } from "../types/Socio";
 import type { Usuario } from "../types/Usuario";
+import { useAuth } from "../context/AuthContext";
+import { puedeAnular } from "../utils/permisos";
 
 const ESTILO_INPUT =
   "w-full rounded-xl border border-border-light bg-bg-surface px-4 py-2 font-marmelad text-sm font-semibold text-text-main placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent-modern";
@@ -189,6 +191,7 @@ const estiloFiltro = (activo: boolean) =>
 
 function Prestamos() {
   const { libros, socios, prestamos, cargando, error, recargar } = useDatosInicio();
+  const { rol } = useAuth();
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
 
   const [busqueda, setBusqueda] = useState("");
@@ -343,7 +346,7 @@ function Prestamos() {
             <AccionesFila
               onEditar={() => setPrestamoEnEdicion(p)}
               onImprimir={() => void imprimirTicket(p)}
-              onAnular={() => anular(p)}
+              onAnular={puedeAnular(rol) ? () => anular(p) : undefined}
             />
           )}
         />

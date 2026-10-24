@@ -1,8 +1,10 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
 import type { LoginResponse } from "../types/LoginResponse";
+import { rolDe, type Rol } from "../utils/permisos";
 
 interface AuthContextType {
   usuario: LoginResponse | null;
+  rol: Rol;
   iniciarSesion: (data: LoginResponse) => void;
   cerrarSesion: () => void;
 }
@@ -15,6 +17,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return guardado ? JSON.parse(guardado) : null;
   });
 
+  const rol = rolDe(usuario?.nombrePerfil);
+
   const iniciarSesion = (data: LoginResponse) => {
     localStorage.setItem("usuario", JSON.stringify(data));
     setUsuario(data);
@@ -26,7 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ usuario, iniciarSesion, cerrarSesion }}>
+    <AuthContext.Provider value={{ usuario, rol, iniciarSesion, cerrarSesion }}>
       {children}
     </AuthContext.Provider>
   );

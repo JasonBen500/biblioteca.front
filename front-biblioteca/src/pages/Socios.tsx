@@ -15,6 +15,8 @@ import { compararSociosActivos, contarPrestamosPorSocio } from "../utils/estadis
 import type { Socio } from "../types/Socio";
 import GraficaSociosActivos from "../components/dashboard/GraficaSociosActivos";
 import { useDetallesPrestamo } from "../hooks/useDetallesPrestamo";
+import { useAuth } from "../context/AuthContext";
+import { puedeAnular } from "../utils/permisos";
 
 
 const SOCIO_VACIO: Socio = {
@@ -154,7 +156,7 @@ const estiloFiltro = (activo: boolean) =>
 
 function Socios() {
   const { libros, socios, prestamos, cargando, error, recargar } = useDatosInicio();
-
+  const { rol } = useAuth();
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>("activos");
   const [mensaje, setMensaje] = useState("");
@@ -259,7 +261,7 @@ function Socios() {
               socio={socio}
               totalPrestamos={conteoPrestamos.get(socio.idSocio) ?? 0}
               onEditar={setSocioEnEdicion}
-              onAnular={anular}
+              onAnular={puedeAnular(rol) ? anular : undefined}
               onVerDetalles={setSocioDetalle}
               onIniciarPrestamo={setSocioPrestamo}
             />

@@ -4,6 +4,7 @@ import { LogOut, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { menuItems } from "./menuItems";
 import logo from "../../assets/images/LogoSimple.png";
+import { puedeAcceder } from "../../utils/permisos";
 
 const cx = (...clases: (string | false)[]) => clases.filter(Boolean).join(" ");
 
@@ -16,7 +17,7 @@ function Sidebar() {
   const [abierto, setAbierto] = useState(
     () => localStorage.getItem("sidebar-abierto") !== "false",
   );
-  const { usuario, cerrarSesion } = useAuth();
+  const { usuario, rol, cerrarSesion } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -57,8 +58,8 @@ function Sidebar() {
       </div>
 
       {/* Opciones del menú */}
-            <nav className="flex flex-1 flex-col gap-1 overflow-y-auto overflow-x-hidden py-6 pl-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {menuItems.map(({ to, label, icon: Icono }) => (
+      <nav className="flex flex-1 flex-col gap-1 overflow-y-auto overflow-x-hidden py-6 pl-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {menuItems.filter((item) => puedeAcceder(rol, item.to)).map(({ to, label, icon: Icono }) => (
           <NavLink
             key={to}
             to={to}
